@@ -1,6 +1,6 @@
 import { getInputLineIteratorForDay } from "../../utils";
 
-function isSafe(report: number[]): boolean {
+function unsafeLevel(report: number[]): number | undefined {
   let isIncreasing = false;
 
   for (var i = 1; i < report.length; i++) {
@@ -9,24 +9,57 @@ function isSafe(report: number[]): boolean {
 
     const difference = Math.abs(levelA - levelB);
     if (difference < 1 || difference > 3) {
-      return false;
+      return i;
     }
 
     if (i === 1) {
       isIncreasing = levelA < levelB;
     }
     if (levelA > levelB && isIncreasing) {
-      return false;
+      return i;
     }
     if (levelA < levelB && !isIncreasing) {
-      return false;
+      return i;
     }
   }
-  return true;
+  return undefined;
 }
 
 function numberOfSafeReports(reports: number[][]): number {
-  return reports.reduce((acc, report) => (acc += isSafe(report) ? 1 : 0), 0);
+  return reports.reduce(
+    (acc, report) => (acc += unsafeLevel(report) === undefined ? 1 : 0),
+    0,
+  );
+}
+
+function numOfSafeReportsWithProblemDampener(reports: number[][]): number {
+  const unsafeLevelRemovingLevel = (
+    report: number[],
+    level: number,
+  ): number | undefined => {
+    const copy = [...report];
+    copy.splice(level, 1);
+    return unsafeLevel(copy);
+  };
+
+  let safeNum = 0;
+  for (const report of reports) {
+    const level = unsafeLevel(report);
+    if (level === undefined) {
+      safeNum++;
+      continue;
+    }
+
+    // Try removing each level once and see if that makes it safe.
+    for (let i = 0; i < report.length; i++) {
+      const level = unsafeLevelRemovingLevel(report, i);
+      if (level === undefined) {
+        safeNum++;
+        break;
+      }
+    }
+  }
+  return safeNum;
 }
 
 /**
@@ -44,6 +77,10 @@ const example = [
 
 function example1() {
   console.log(numberOfSafeReports(example));
+}
+
+function example2() {
+  console.log(numOfSafeReportsWithProblemDampener(example));
 }
 
 /**
@@ -64,4 +101,9 @@ async function part1() {
   console.log(numberOfSafeReports(reports));
 }
 
-part1();
+async function part2() {
+  const reports = await getInput();
+  console.log(numOfSafeReportsWithProblemDampener(reports));
+}
+
+part2();
