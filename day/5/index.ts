@@ -14,13 +14,19 @@ const parseRules = (input: string): Rule[] =>
 const pageNumberCannotBeAfter = (pageNumber: number, rules: Rule[]): number[] =>
   rules.filter((rule) => rule.before === pageNumber).map((r) => r.after);
 
-const parseUpdate = (input: string): number[] =>
-  input.split(",").map((n) => +n);
+const getApplicableRulesForUpdate = (
+  rules: Rule[],
+  numbers: number[],
+): Rule[] =>
+  rules.filter(
+    (rule) => numbers.includes(rule.before) && numbers.includes(rule.after),
+  );
 
-const parseAllUpdates = (input: string): number[][] =>
-  input.split("\n").map((update) => parseUpdate(update));
-
-const filterValidUpdates = (updates: number[][], rules: Rule[]): number[][] =>
+const filterUpdates = (
+  updates: number[][],
+  rules: Rule[],
+  valid: boolean,
+): number[][] =>
   updates.filter((update) => {
     const pageNumbersSeen = new Set<number>();
 
@@ -28,23 +34,45 @@ const filterValidUpdates = (updates: number[][], rules: Rule[]): number[][] =>
       const pageNumber = update[i];
       const cannotBeAfter = pageNumberCannotBeAfter(pageNumber, rules);
       if ([...pageNumbersSeen].some((num) => cannotBeAfter.includes(num))) {
-        return false;
+        return !valid;
       }
       pageNumbersSeen.add(pageNumber);
     }
 
-    return true;
+    return valid;
   });
 
-const parseValidRules = (input: string): number[][] => {
+const parseUpdatesAndRules = (input: string) => {
   const [rulesInput, updatesInput] = input.split("\n\n");
   const rules = parseRules(rulesInput);
-  const updates = parseAllUpdates(updatesInput);
-  return filterValidUpdates(updates, rules);
+  const updates = updatesInput
+    .split("\n")
+    .map((update) => update.split(",").map((n) => +n));
+  return { updates, rules };
 };
 
 const getMiddleNumber = (input: number[]): number =>
   input[Math.round(input.length / 2) - 1];
+
+const fixInvalidUpdates = (updates: number[][], rules: Rule[]): number[][] =>
+  updates.map((update) => {
+    let applicableRules = getApplicableRulesForUpdate(rules, update);
+    const fixed: number[] = [];
+
+    while (fixed.length < update.length) {
+      const number = update.find(
+        (number) =>
+          !fixed.includes(number) &&
+          applicableRules.every(({ after }) => after !== number),
+      );
+      fixed.push(number!);
+      applicableRules = applicableRules.filter(
+        ({ before }) => before !== number,
+      );
+    }
+
+    return fixed;
+  });
 
 /**
  * Examples
@@ -84,9 +112,23 @@ function example1() {
   console.log(example1in);
   console.log();
 
-  const validUpdates = parseValidRules(example1in);
+  const { updates, rules } = parseUpdatesAndRules(example1in);
+  const validUpdates = filterUpdates(updates, rules, true);
   console.log(
     validUpdates.reduce((acc, update) => (acc += getMiddleNumber(update)), 0),
+  );
+}
+
+function example2() {
+  // 123
+  console.log(example1in);
+  console.log();
+
+  const { updates, rules } = parseUpdatesAndRules(example1in);
+  const invalidUpdates = filterUpdates(updates, rules, false);
+  const fixed = fixInvalidUpdates(invalidUpdates, rules);
+  console.log(
+    fixed.reduce((acc, update) => (acc += getMiddleNumber(update)), 0),
   );
 }
 
@@ -96,10 +138,20 @@ function example1() {
 
 function part1() {
   // 6505
-  const validUpdates = parseValidRules(getInputString(5));
+  const { updates, rules } = parseUpdatesAndRules(getInputString(5));
+  const validUpdates = filterUpdates(updates, rules, true);
   console.log(
     validUpdates.reduce((acc, update) => (acc += getMiddleNumber(update)), 0),
   );
 }
 
-part1();
+function part2() {
+  const { updates, rules } = parseUpdatesAndRules(getInputString(5));
+  const invalidUpdates = filterUpdates(updates, rules, false);
+  const fixed = fixInvalidUpdates(invalidUpdates, rules);
+  console.log(
+    fixed.reduce((acc, update) => (acc += getMiddleNumber(update)), 0),
+  );
+}
+
+part2();
