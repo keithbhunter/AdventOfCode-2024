@@ -12,6 +12,44 @@ function createWordSearch(input: string): WordSearch {
 
 type WordSearchLocation = [row: number, col: number];
 
+function flip(
+  wordLocation: WordSearchLocation[],
+  direction: Direction,
+): WordSearchLocation[] {
+  if (wordLocation.length % 2 === 0) {
+    throw new Error("must be odd number to flip");
+  }
+  return wordLocation.map(([row, col], index) => {
+    const [inverseRow, inverseCol] =
+      wordLocation[wordLocation.length - index - 1];
+    switch (direction) {
+      case Direction.left:
+      case Direction.right:
+        return [row, inverseCol];
+      case Direction.up:
+      case Direction.down:
+        return [inverseRow, col];
+      default:
+        throw new Error("cannot flip diagonally");
+    }
+  });
+}
+
+function isDiagonal(location: WordSearchLocation[]): boolean {
+  const [startRow, startCol] = location[0];
+  const [nextRow, nextCol] = location[1];
+  return startRow !== nextRow && startCol !== nextCol;
+}
+
+function isSameLocation(
+  a: WordSearchLocation[],
+  b: WordSearchLocation[],
+): boolean {
+  return a.every(
+    ([row, col], index) => b[index][0] === row && b[index][1] === col,
+  );
+}
+
 enum Direction {
   right = "right",
   left = "left",
@@ -41,24 +79,27 @@ class WordSearcher {
     return this.wordSearch[row][col];
   }
 
-  match(
+  findMatchAt(
     word: string,
     [startRow, startCol]: WordSearchLocation,
     direction: Direction,
-  ): boolean {
+  ): WordSearchLocation[] | null {
     let matchIndex = 0;
     let row = startRow;
     let col = startCol;
+    let locations: WordSearchLocation[] = [];
 
     do {
       let letterToMatch = word.charAt(matchIndex);
-      if (this.letterAt([row, col]) !== letterToMatch) {
-        return false;
+      if (this.letterAt([row, col]) === letterToMatch) {
+        locations.push([row, col]);
+      } else {
+        return null;
       }
 
       matchIndex++;
       if (matchIndex === word.length) {
-        return true;
+        return locations;
       }
 
       switch (direction) {
@@ -98,21 +139,66 @@ class WordSearcher {
       col < this.numOfColumns
     );
 
-    return false;
+    return null;
   }
 
-  numberOfWord(word: string): number {
-    let matches = 0;
+  findMatches(word: string): WordSearchLocation[][] | null {
+    let allMatches: WordSearchLocation[][] = [];
     for (let line = 0; line < this.numOfLines; line++) {
       for (let col = 0; col < this.numOfColumns; col++) {
         if (this.letterAt([line, col]) === word.charAt(0)) {
-          matches += Object.values(Direction).filter((dir) =>
-            this.match(word, [line, col], dir),
-          ).length;
+          const matches = Object.values(Direction)
+            .map((dir) => this.findMatchAt(word, [line, col], dir))
+            .filter((m): m is WordSearchLocation[] => !!m);
+          allMatches = allMatches.concat(matches);
         }
       }
     }
-    return matches;
+    return allMatches;
+  }
+
+  matchXForm(wordMatch: WordSearchLocation[]): WordSearchLocation[] | null {
+    for (const dir of [
+      Direction.up,
+      Direction.down,
+      Direction.left,
+      Direction.right,
+    ]) {
+      const flippedLocation = flip(wordMatch, dir);
+      if (
+        flippedLocation.every(
+          (location, i) =>
+            this.letterAt(wordMatch[i]) === this.letterAt(location),
+        )
+      ) {
+        return flippedLocation;
+      }
+    }
+    return null;
+  }
+
+  numberOfXForms(word: string): number {
+    const matchLocations = this.findMatches(word);
+    if (!matchLocations) {
+      return 0;
+    }
+
+    let xMatchLocations: WordSearchLocation[][] = [];
+
+    for (const matchLocation of matchLocations) {
+      if (!isDiagonal(matchLocation)) {
+        continue;
+      }
+      if (xMatchLocations.find((loc) => isSameLocation(loc, matchLocation))) {
+        continue;
+      }
+
+      const xFormLocation = this.matchXForm(matchLocation);
+      if (xFormLocation) {
+        xMatchLocations.push(xFormLocation);
+      }
+    }
+    return xMatchLocations.length;
   }
 }
 
@@ -139,7 +225,12 @@ MXMXAXMASX`;
 
 function example1() {
   const wordSearcher = new WordSearcher(createWordSearch(exampleIn1));
-  console.log(wordSearcher.numberOfWord("XMAS"));
+  console.log(wordSearcher.findMatches("XMAS")?.length ?? 0);
+}
+
+function example2() {
+  const wordSearcher = new WordSearcher(createWordSearch(exampleIn1));
+  console.log(wordSearcher.numberOfXForms("MAS"));
 }
 
 /**
@@ -149,7 +240,13 @@ function example1() {
 function part1() {
   const input = getInputString(4).trim();
   const searcher = new WordSearcher(createWordSearch(input));
-  console.log(searcher.numberOfWord("XMAS"));
+  console.log(searcher.findMatches("XMAS")?.length ?? 0);
 }
 
-part1();
+function part2() {
+  const input = getInputString(4).trim();
+  const searcher = new WordSearcher(createWordSearch(input));
+  console.log(searcher.numberOfXForms("MAS"));
+}
+
+part2();
