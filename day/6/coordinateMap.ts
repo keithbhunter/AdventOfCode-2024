@@ -1,40 +1,50 @@
 export type Coordinate = { row: number; col: number };
 
+export function isEqualCoordinates(a: Coordinate, b: Coordinate): boolean {
+  return a.row === b.row && a.col === b.col;
+}
+
+const toKey = (coordinate: Coordinate): Coordinate => {
+  // @ts-ignore
+  return `${coordinate.row},${coordinate.col}`;
+};
+
+const toCoordinate = (key: Coordinate): Coordinate => {
+  // @ts-ignore
+  const keyAsString: string = key;
+  const [row, col] = keyAsString.split(",");
+  return { row: +row, col: +col };
+};
+
 // This is basically Map<Coordinate, V>
 export default class CoordinateMap<V> extends Map<Coordinate, V> {
-  private _key(coordinate: Coordinate): Coordinate {
-    // @ts-ignore
-    return `${coordinate.row},${coordinate.col}`;
-  }
-
-  private _coordinate(key: string): Coordinate {
-    const [row, col] = key.split(",");
-    return { row: +row, col: +col };
-  }
-
   get(coordinate: Coordinate): V | undefined {
-    return super.get(this._key(coordinate));
+    return super.get(toKey(coordinate));
   }
 
   set(coordinate: Coordinate, value: V): this {
-    return super.set(this._key(coordinate), value);
+    return super.set(toKey(coordinate), value);
   }
 
   delete(coordinate: Coordinate): boolean {
-    return super.delete(this._key(coordinate));
+    return super.delete(toKey(coordinate));
   }
 
   forEach(
     callbackfn: (value: V, key: Coordinate, map: Map<Coordinate, V>) => void,
     thisArg?: any,
   ): void {
-    return super.forEach((v, key) =>
-      // @ts-ignore
-      callbackfn(v, this._coordinate(key), this),
-    );
+    return super.forEach((v, key) => callbackfn(v, toCoordinate(key), this));
   }
 
   has(coordinate: Coordinate): boolean {
-    return super.has(this._key(coordinate));
+    return super.has(toKey(coordinate));
+  }
+
+  *keys(): MapIterator<Coordinate> {
+    const parentKeyIterator = super.keys();
+    for (const key of parentKeyIterator) {
+      yield toCoordinate(key);
+    }
   }
 }

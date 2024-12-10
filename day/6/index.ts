@@ -1,5 +1,5 @@
 import { getInputString } from "../../utils";
-import CoordinateMap, { Coordinate } from "./coordinateMap";
+import CoordinateMap, { Coordinate, isEqualCoordinates } from "./coordinateMap";
 import { Direction, turnRight } from "./direction";
 
 // Placeholders to help identify things on the map.
@@ -7,28 +7,35 @@ class Obstruction {}
 class OpenSpace {}
 
 class OutOfBoundsError extends Error {}
+class InfiniteLoopError extends Error {}
 
 type MapItem = Obstruction | Guard | OpenSpace;
 
 class Guard {
-  private _facing: Direction;
-  private _position: Coordinate;
-
-  // Basically Set<Coordinate> since I'm not using the value.
-  private _visited = new CoordinateMap<boolean>();
+  facing: Direction;
+  position: Coordinate;
+  visited = new CoordinateMap<number>();
 
   constructor(
     readonly map: CoordinateMap<MapItem>,
-    initialPosition: Coordinate,
-    facing: Direction,
+    readonly initialPosition: Coordinate,
+    readonly initialFacing: Direction,
   ) {
-    this._position = initialPosition;
-    this._visited.set(initialPosition, true);
-    this._facing = facing;
+    this.position = initialPosition;
+    this.facing = initialFacing;
+    this.visited.set(initialPosition, 1);
   }
 
-  get visited() {
-    return this._visited;
+  get distanceMoved(): number {
+    return [...this.visited.values()].reduce((acc, v) => acc + v, 0);
+  }
+
+  reset() {
+    this.map.set(this.position, new OpenSpace());
+    this.map.set(this.initialPosition, this);
+    this.position = this.initialPosition;
+    this.facing = this.initialFacing;
+    this.visited.clear();
   }
 
   move() {
@@ -43,26 +50,32 @@ class Guard {
       throw new OutOfBoundsError();
     }
 
-    this.map.set(this._position, new OpenSpace());
-    this._position = nextPosition;
-    this.map.set(this._position, this);
-    this._visited.set(this._position, true);
+    this.map.set(this.position, new OpenSpace());
+    this.position = nextPosition;
+    this.map.set(this.position, this);
+
+    const previouslyVisited = this.visited.get(this.position) ?? 0;
+    if (previouslyVisited > 10) {
+      throw new InfiniteLoopError();
+    }
+
+    this.visited.set(this.position, previouslyVisited + 1);
   }
 
   private _turnRight() {
-    this._facing = turnRight(this._facing);
+    this.facing = turnRight(this.facing);
   }
 
   private _getNextPosition(): Coordinate {
-    switch (this._facing) {
+    switch (this.facing) {
       case Direction.up:
-        return { row: this._position.row - 1, col: this._position.col };
+        return { row: this.position.row - 1, col: this.position.col };
       case Direction.left:
-        return { row: this._position.row, col: this._position.col - 1 };
+        return { row: this.position.row, col: this.position.col - 1 };
       case Direction.right:
-        return { row: this._position.row, col: this._position.col + 1 };
+        return { row: this.position.row, col: this.position.col + 1 };
       case Direction.down:
-        return { row: this._position.row + 1, col: this._position.col };
+        return { row: this.position.row + 1, col: this.position.col };
     }
   }
 }
@@ -87,39 +100,49 @@ const generateMap = (input: string): CoordinateMap<MapItem> => {
   }, new CoordinateMap<MapItem>());
 };
 
-enum State {
-  start,
-  end,
-}
-
-class StateMachine {
-  private _state = State.start;
-  private _guard: Guard;
-
-  constructor(readonly map: CoordinateMap<MapItem>) {
-    this._guard = [...this.map.values()].find(
-      (value) => value instanceof Guard,
-    )!;
-  }
-
-  get guard() {
-    return this._guard;
-  }
-
-  start() {
-    while (this._state !== State.end) {
-      try {
-        this.guard.move();
-      } catch (e) {
-        if (e instanceof OutOfBoundsError) {
-          this._state = State.end;
-        } else {
-          throw e;
-        }
+const getVisitedPositions = (map: CoordinateMap<MapItem>): Coordinate[] => {
+  const guard = [...map.values()].find((value) => value instanceof Guard)!;
+  while (true) {
+    try {
+      guard.move();
+    } catch (e) {
+      if (e instanceof OutOfBoundsError) {
+        return [...guard.visited.keys()];
       }
+      throw e;
     }
   }
-}
+};
+
+const getObstructionsForInfiniteLoop = (
+  map: CoordinateMap<MapItem>,
+): Coordinate[] => {
+  const guard = [...map.values()].find((value) => value instanceof Guard)!;
+  const initialPosition = guard.position;
+  const visited = getVisitedPositions(map).filter(
+    (coordinate) => !isEqualCoordinates(coordinate, initialPosition),
+  );
+  const locations: Coordinate[] = [];
+
+  for (const coordinate of visited) {
+    guard.reset();
+    map.set(coordinate, new Obstruction());
+
+    try {
+      getVisitedPositions(map);
+    } catch (e) {
+      if (e instanceof InfiniteLoopError) {
+        locations.push(coordinate);
+        continue;
+      }
+      throw e;
+    } finally {
+      map.set(coordinate, new OpenSpace());
+    }
+  }
+
+  return locations;
+};
 
 /**
  * Examples
@@ -136,24 +159,38 @@ const example1in = `....#.....
 #.........
 ......#...`;
 
+// 41
 const example1 = () => {
   console.log(example1in);
   console.log();
   const map = generateMap(example1in);
-  const sm = new StateMachine(map);
-  sm.start();
-  console.log(sm.guard.visited);
+  console.log(getVisitedPositions(map).length);
+};
+
+// 6
+const example2 = () => {
+  console.log(example1in);
+  console.log();
+  const map = generateMap(example1in);
+  const locations = getObstructionsForInfiniteLoop(map);
+  console.log(locations);
+  console.log(locations.length);
 };
 
 /**
  * Answers
  */
 
+// 5080
 const part1 = () => {
   const map = generateMap(getInputString(6));
-  const sm = new StateMachine(map);
-  sm.start();
-  console.log(sm.guard.visited.size);
+  console.log(getVisitedPositions(map).length);
 };
 
-part1();
+// 1919
+const part2 = () => {
+  const map = generateMap(getInputString(6));
+  console.log(getObstructionsForInfiniteLoop(map).length);
+};
+
+part2();
