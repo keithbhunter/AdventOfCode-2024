@@ -3,6 +3,7 @@ import { getInputString } from "../../utils";
 enum Operator {
   add = 0,
   mul,
+  or,
 }
 
 type Equation = {
@@ -19,17 +20,24 @@ const compute = (operands: number[], operators: number[]): number => {
     if (index === 0) {
       return operand;
     }
-    return operators[index - 1] === Operator.add
-      ? acc + operand
-      : acc * operand;
+    switch (operators[index - 1]) {
+      case Operator.add:
+        return acc + operand;
+      case Operator.mul:
+        return acc * operand;
+      case Operator.or:
+        return +`${acc}${operand}`;
+      default:
+        throw new Error("unexpect operator");
+    }
   }, 0);
 };
 
 // operatorPermutations(2) => [[0,0], [0,1], [1,0], [1,1]]
 const operatorPermutations = (times: number): Operator[][] => {
   const permutations: Operator[][] = [];
-  for (let i = 0; i < 2 ** times; i++) {
-    const binaryString = i.toString(2).padStart(times, "0");
+  for (let i = 0; i < 3 ** times; i++) {
+    const binaryString = i.toString(3).padStart(times, "0");
     permutations.push([...binaryString].map((char) => +char as Operator));
   }
   return permutations;
@@ -64,7 +72,8 @@ const exampleIn = `190: 10 19
 21037: 9 7 18 13
 292: 11 6 16 20`;
 
-// 3749
+// Part 1: 3749
+// Part 2: 11387
 const example1 = () => {
   console.log(`${exampleIn}\n`);
   const equations = filterEquationsThatCanBeTrue(parseEquations(exampleIn));
@@ -76,7 +85,7 @@ const example1 = () => {
  * Answers
  */
 
-// 12553187650171
+// Part 1: 12553187650171
 const part1 = () => {
   const equations = filterEquationsThatCanBeTrue(
     parseEquations(getInputString(7).trim()),
