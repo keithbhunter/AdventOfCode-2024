@@ -34,22 +34,37 @@ const calculateAntinodeLocations = (
 ): Record<string, Coordinate[]> => {
   const antinodes: Record<string, Coordinate[]> = {};
   for (const frequency in antennaLocations) {
-    antinodes[frequency] ??= [];
+    antinodes[frequency] = antennaLocations[frequency];
 
     for (const locationPair of combinations(antennaLocations[frequency], 2)) {
       const [deltaY, deltaX] = slope(locationPair[0], locationPair[1]);
-      antinodes[frequency] = antinodes[frequency].concat(
-        [
-          {
-            row: locationPair[0].row - deltaY,
-            col: locationPair[0].col - deltaX,
-          },
-          {
-            row: locationPair[1].row + deltaY,
-            col: locationPair[1].col + deltaX,
-          },
-        ].filter((coordinate) => coordinateIsInMap(coordinate, map)),
-      );
+      let currentLocation: Coordinate | null = locationPair[0];
+      while (currentLocation) {
+        const possibleLocation: Coordinate = {
+          row: currentLocation.row - deltaY,
+          col: currentLocation.col - deltaX,
+        }
+        if (coordinateIsInMap(possibleLocation, map)) {
+          currentLocation = possibleLocation;
+          antinodes[frequency].push(currentLocation);
+        } else {
+          currentLocation = null;
+        }
+      }
+
+      currentLocation = locationPair[1];
+      while (currentLocation) {
+        const possibleLocation: Coordinate = {
+          row: currentLocation.row + deltaY,
+          col: currentLocation.col + deltaX,
+        }
+        if (coordinateIsInMap(possibleLocation, map)) {
+          currentLocation = possibleLocation;
+          antinodes[frequency].push(currentLocation);
+        } else {
+          currentLocation = null;
+        }
+      }
     }
   }
   return antinodes;
@@ -84,7 +99,8 @@ const exampleIn = `............
 ............
 ............`;
 
-// 14
+// Part 1: 14
+// Part 2: 31
 const example1 = () => {
   console.log(`${exampleIn}\n`);
   const map = createMap(exampleIn);
@@ -99,7 +115,8 @@ const example1 = () => {
  * Answers
  */
 
-// 220
+// Part 1: 220
+// Part 2: 813
 const part1 = () => {
   const map = createMap(getInputString(8).trim());
   const locations = findAntennaLocations(map);
