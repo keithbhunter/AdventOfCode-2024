@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@tsconfig/recommended": "^1.0.8",
+    "@tsconfig/node22": "^22.0.0",
     "@types/node": "^22.10.1",
     "eslint": "^9.16.0",
     "eslint-config-prettier": "^9.1.0",
