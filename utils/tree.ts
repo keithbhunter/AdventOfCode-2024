@@ -28,8 +28,4 @@ export default class Tree<T> {
       }
     }
   }
-
-  // [Symbol.for("nodejs.util.inspect.custom")]() {
-
-  // }
 }

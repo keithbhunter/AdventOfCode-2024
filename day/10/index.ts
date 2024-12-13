@@ -64,15 +64,11 @@ const findNumberOfTrailsFromTrailhead = (
   const tree = new Tree(trailhead);
   addNextSteps(tree.root);
 
-  const leaves = [...tree.preOrderTraversal()].filter(
+  return [...tree.preOrderTraversal()].filter(
     (node) =>
       node.children.length === 0 &&
       valueAtCoordinate(node.value, hikingMap) === 9,
-  );
-  return leaves.reduce((map, node) => {
-    map.set(node.value, valueAtCoordinate(node.value, hikingMap));
-    return map;
-  }, new CoordinateMap<number>()).size;
+  ).length;
 };
 
 /**
@@ -105,6 +101,7 @@ const exampleIn = `89010123
 10456732`;
 
 // Part 1: 36
+// Part 2: 81
 const example1 = () => {
   console.log(`${exampleIn}\n`);
   const { hikingMap, trailheads } = parseHikingMap(exampleIn);
