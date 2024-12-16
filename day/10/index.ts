@@ -55,7 +55,6 @@ const findNumberOfTrailsFromTrailhead = (
       if (previous && isEqualCoordinates(next, previous)) {
         continue;
       }
-      // console.log(next);
       const child = node.addChild(next);
       addNextSteps(child);
     }
