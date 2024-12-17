@@ -1,4 +1,7 @@
 {
   "extends": "@tsconfig/node22/tsconfig.json",
+  "compilerOptions": {
+    "sourceMap": true
+  },
   "include": ["day/**/*.ts", "utils/**/*.ts"]
 }
