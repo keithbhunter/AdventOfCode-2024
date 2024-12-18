@@ -1,51 +1,55 @@
 import { getInputString } from "../../utils";
-import ArrayTree from "../../utils/arrayTree";
 
 const trimLeadingZeroes = (str: string) => (+str).toString();
 
+const changeStone = (stone: string): string[] => {
+  if (stone === "0") {
+    return ["1"];
+  }
+
+  if (stone.length % 2 === 0) {
+    const halfDigitIndex = stone.length / 2;
+    const firstHalf = stone.substring(0, halfDigitIndex);
+    const secondHalf = stone.substring(halfDigitIndex);
+    return [trimLeadingZeroes(firstHalf), trimLeadingZeroes(secondHalf)];
+  }
+
+  return [(+stone * 2024).toString()];
+};
+
 /*
-125 17
-253000 1 7
-253 0 2024 14168
-512072 1 20 24 28676032
-512 72 2024 2 0 2 4 2867 6032
-1036288 7 2 20 24 4048 1 4048 8096 28 67 60 32
-2097446912 14168 4048 2 0 2 4 40 48 2024 40 48 80 96 2 8 6 7 6 0 3 2
+0. 125 17
+1. 253000 1 7
+2. 253 0 2024 14168
+3. 512072 1 20 24 28676032
+4. 512 72 2024 2 0 2 4 2867 6032
+5. 1036288 7 2 20 24 4048 1 4048 8096 28 67 60 32
+6. 2097446912 14168 4048 2 0 2 4 40 48 2024 40 48 80 96 2 8 6 7 6 0 3 2
 */
-const blink = (times: number, input: string[]) => {
-  const tree = new ArrayTree(input);
+const blink = (times: number, stones: string[]): number => {
+  let seen: Record<string, number> = stones.reduce<Record<string, number>>(
+    (acc, stone) => {
+      acc[stone] = (acc[stone] ?? 0) + 1;
+      return acc;
+    },
+    {},
+  );
 
   for (let i = 0; i < times; i++) {
-    // console.log("blink", i, [...tree.preOrderTraversal()]);
-    console.log("blink", i);
-    let index = 0;
-    do {
-      const digits = tree.at(index);
-      // console.log('digits', digits)
-      if (!digits) {
-        throw new Error(`unexpected error; could not get index ${index}`);
-      }
-      if (digits === "0") {
-        tree.replace(index, "1");
-        continue;
-      }
+    let newSeen: Record<string, number> = {};
 
-      if (digits.length % 2 === 0) {
-        const halfDigitIndex = digits.length / 2;
-        const firstHalf = digits.substring(0, halfDigitIndex);
-        const secondHalf = digits.substring(halfDigitIndex);
-        tree.replace(index, [
-          trimLeadingZeroes(firstHalf),
-          trimLeadingZeroes(secondHalf),
-        ]);
-        index++;
-        continue;
-      }
+    for (const stone in seen) {
+      const numberOfTimesStoneAppears = seen[stone];
+      changeStone(stone).forEach((newStone) => {
+        newSeen[newStone] =
+          (newSeen[newStone] ?? 0) + numberOfTimesStoneAppears;
+      });
+    }
 
-      tree.replace(index, (+digits * 2024).toString());
-    } while (++index < tree.length);
+    seen = newSeen;
   }
-  return [...tree.preOrderTraversal()];
+
+  return Object.values(seen).reduce((acc, value) => acc + value, 0);
 };
 
 /**
@@ -55,7 +59,15 @@ const blink = (times: number, input: string[]) => {
 const exampleIn = `125 17`;
 
 const example1 = () => {
-  console.log(blink(6, exampleIn.trim().split(" ")));
+  // 0: 2
+  // 1: 3
+  // 2: 4
+  // 3: 5
+  // 4: 9
+  // 5: 13
+  // 6: 22
+  // 25: 55312
+  console.log(blink(25, exampleIn.trim().split(" ")));
 };
 
 /**
@@ -63,18 +75,8 @@ const example1 = () => {
  */
 
 const part1 = () => {
-  console.log(blink(75, getInputString(11).trim().split(" ")).length);
+  // 25: 217812
+  console.log(blink(75, getInputString(11).trim().split(" ")));
 };
 
 part1();
-
-// const t = new ArrayTree(["125", "17"]);
-// t.replace(0, "253000");
-// t.replace(1, ["1", "7"]);
-// t.replace(0, ["253", "0"]);
-// console.log(t.at(0));
-// console.log('finding')
-// console.log(t.at(0));
-// console.log(t.at(1));
-// console.log(t.at(2));
-// console.log(t.length);
